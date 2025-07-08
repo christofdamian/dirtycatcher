@@ -1,0 +1,16 @@
+# Sample castget configuration file
+# Global settings
+[*]
+genre=Podcast
+spool=/home/cdamian/workspace/dirtycatcher/podcasts
+
+# BBC Radio 4 - In Our Time
+[inourtime]
+url=https://feeds.bbci.co.uk/programmes/b006qykl/episodes/downloads.rss
+album_tag=In Our Time
+comment_tag=BBC Radio 4 - In Our Time
+
+# This American Life
+[thisamericanlife]
+url=https://feeds.thisamericanlife.org/talpodcast
+album_tag=This American Life
