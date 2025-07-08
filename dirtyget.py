@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Podcast downloader that uses castget configuration format.
-Downloads only the newest episode for each podcast.
+Podcast downloader that uses dirtyget configuration format.
+Downloads the newest episodes for each podcast.
 """
 
 import os
@@ -21,15 +21,15 @@ from mutagen.id3 import ID3, TPE1, TALB, TCON, TIT2, COMM
 
 class PodcastDownloader:
     def __init__(self, config_file=None, force_overwrite=False):
-        self.config_file = config_file or os.path.expanduser("~/.castgetrc")
+        self.config_file = config_file or os.path.expanduser("~/.dirtygetrc")
         self.config = configparser.ConfigParser(interpolation=None)  # Disable interpolation
         self.config.optionxform = str  # Preserve case sensitivity
         self.force_overwrite = force_overwrite
-        self.downloaded_urls_file = os.path.expanduser("~/.castget_downloaded_urls")
+        self.downloaded_urls_file = os.path.expanduser("~/.dirtyget_downloaded_urls")
         self.downloaded_urls = set()
         
     def load_config(self):
-        """Load castget configuration file."""
+        """Load dirtyget configuration file."""
         if not os.path.exists(self.config_file):
             raise FileNotFoundError(f"Configuration file not found: {self.config_file}")
         
@@ -331,9 +331,9 @@ class PodcastDownloader:
 
 def main():
     """Main function."""
-    parser = argparse.ArgumentParser(description='Download podcasts using castget configuration')
+    parser = argparse.ArgumentParser(description='Download podcasts using dirtyget configuration')
     parser.add_argument('config_file', nargs='?', default=None,
-                        help='Path to castget configuration file (default: ~/.castgetrc)')
+                        help='Path to dirtyget configuration file (default: ~/.dirtygetrc)')
     parser.add_argument('--force', action='store_true',
                         help='Force overwrite existing downloaded files')
     

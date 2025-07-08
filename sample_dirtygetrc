@@ -1,4 +1,4 @@
-# Sample castget configuration file
+# Sample dirtyget configuration file
 # Global settings
 [*]
 genre=Podcast
