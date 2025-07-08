@@ -82,8 +82,8 @@ class PodcastDownloader:
             
         return channels
     
-    def parse_rss_feed(self, url):
-        """Parse RSS feed and return latest episode."""
+    def parse_rss_feed(self, url, max_episodes=1):
+        """Parse RSS feed and return specified number of episodes."""
         try:
             response = requests.get(url, timeout=30)
             response.raise_for_status()
@@ -95,37 +95,41 @@ class PodcastDownloader:
             
             if not items:
                 print(f"No episodes found in feed: {url}")
-                return None
+                return []
             
-            # Get the first item (latest episode)
-            latest_item = items[0]
+            # Get the requested number of episodes (or all available if fewer)
+            episodes_to_process = items[:max_episodes]
+            episodes = []
             
-            # Extract episode information
-            episode = {
-                'title': self._get_text(latest_item, 'title'),
-                'description': self._get_text(latest_item, 'description'),
-                'pub_date': self._get_text(latest_item, 'pubDate'),
-                'link': self._get_text(latest_item, 'link'),
-                'enclosure_url': None,
-                'enclosure_type': None,
-                'enclosure_length': None
-            }
+            for item in episodes_to_process:
+                # Extract episode information
+                episode = {
+                    'title': self._get_text(item, 'title'),
+                    'description': self._get_text(item, 'description'),
+                    'pub_date': self._get_text(item, 'pubDate'),
+                    'link': self._get_text(item, 'link'),
+                    'enclosure_url': None,
+                    'enclosure_type': None,
+                    'enclosure_length': None
+                }
+                
+                # Find enclosure (audio/video file)
+                enclosure = item.find('enclosure')
+                if enclosure is not None:
+                    episode['enclosure_url'] = enclosure.get('url')
+                    episode['enclosure_type'] = enclosure.get('type')
+                    episode['enclosure_length'] = enclosure.get('length')
+                
+                episodes.append(episode)
             
-            # Find enclosure (audio/video file)
-            enclosure = latest_item.find('enclosure')
-            if enclosure is not None:
-                episode['enclosure_url'] = enclosure.get('url')
-                episode['enclosure_type'] = enclosure.get('type')
-                episode['enclosure_length'] = enclosure.get('length')
-            
-            return episode
+            return episodes
             
         except requests.RequestException as e:
             print(f"Error fetching RSS feed {url}: {e}")
-            return None
+            return []
         except ET.ParseError as e:
             print(f"Error parsing RSS feed {url}: {e}")
-            return None
+            return []
     
     def _get_text(self, element, tag):
         """Get text content from XML element."""
@@ -295,7 +299,7 @@ class PodcastDownloader:
             print(f"Error updating playlist: {e}")
     
     def download_all_latest(self):
-        """Download the latest episode for all configured channels."""
+        """Download episodes for all configured channels."""
         self.load_config()
         self.load_downloaded_urls()
         channels = self.get_channels()
@@ -309,13 +313,20 @@ class PodcastDownloader:
         for channel_name, channel_config in channels.items():
             print(f"\nProcessing channel: {channel_name}")
             
+            # Determine number of episodes to download
+            max_episodes = int(channel_config.get('max_episodes', 1))
+            
             # Parse RSS feed
-            episode = self.parse_rss_feed(channel_config['url'])
-            if not episode:
+            episodes = self.parse_rss_feed(channel_config['url'], max_episodes)
+            if not episodes:
                 continue
             
-            # Download episode
-            self.download_episode(episode, channel_name, channel_config)
+            print(f"Found {len(episodes)} episode(s) to process")
+            
+            # Download episodes
+            for i, episode in enumerate(episodes, 1):
+                print(f"  Episode {i}/{len(episodes)}: {episode['title']}")
+                self.download_episode(episode, channel_name, channel_config)
 
 
 def main():
