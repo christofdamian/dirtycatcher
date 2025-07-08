@@ -14,13 +14,19 @@ from urllib.parse import urlparse, urljoin
 from pathlib import Path
 import time
 from datetime import datetime
+import argparse
+from mutagen import File as MutagenFile
+from mutagen.id3 import ID3, TPE1, TALB, TCON, TIT2, COMM
 
 
 class PodcastDownloader:
-    def __init__(self, config_file=None):
+    def __init__(self, config_file=None, force_overwrite=False):
         self.config_file = config_file or os.path.expanduser("~/.castgetrc")
         self.config = configparser.ConfigParser(interpolation=None)  # Disable interpolation
         self.config.optionxform = str  # Preserve case sensitivity
+        self.force_overwrite = force_overwrite
+        self.downloaded_urls_file = os.path.expanduser("~/.castget_downloaded_urls")
+        self.downloaded_urls = set()
         
     def load_config(self):
         """Load castget configuration file."""
@@ -28,6 +34,28 @@ class PodcastDownloader:
             raise FileNotFoundError(f"Configuration file not found: {self.config_file}")
         
         self.config.read(self.config_file)
+    
+    def load_downloaded_urls(self):
+        """Load previously downloaded URLs from file."""
+        if os.path.exists(self.downloaded_urls_file):
+            try:
+                with open(self.downloaded_urls_file, 'r') as f:
+                    self.downloaded_urls = set(line.strip() for line in f if line.strip())
+            except IOError as e:
+                print(f"Warning: Could not read downloaded URLs file: {e}")
+                self.downloaded_urls = set()
+        else:
+            self.downloaded_urls = set()
+    
+    def save_downloaded_url(self, url):
+        """Save a downloaded URL to the tracking file."""
+        if url not in self.downloaded_urls:
+            self.downloaded_urls.add(url)
+            try:
+                with open(self.downloaded_urls_file, 'a') as f:
+                    f.write(f"{url}\n")
+            except IOError as e:
+                print(f"Warning: Could not save downloaded URL: {e}")
         
     def get_channels(self):
         """Get all podcast channels from configuration."""
@@ -110,6 +138,11 @@ class PodcastDownloader:
             print(f"No download URL found for episode: {episode['title']}")
             return False
         
+        # Check if URL has been downloaded before (unless --force is used)
+        if not self.force_overwrite and episode['enclosure_url'] in self.downloaded_urls:
+            print(f"Episode URL already downloaded (skipping): {episode['title']}")
+            return True
+        
         # Determine download directory
         spool_dir = channel_config.get('spool', os.getcwd())
         download_dir = Path(spool_dir)
@@ -120,9 +153,13 @@ class PodcastDownloader:
         filepath = download_dir / filename
         
         # Check if file already exists
-        if filepath.exists():
+        if filepath.exists() and not self.force_overwrite:
             print(f"Episode already downloaded: {filepath}")
+            # Still save the URL to tracking file if not already there
+            self.save_downloaded_url(episode['enclosure_url'])
             return True
+        elif filepath.exists() and self.force_overwrite:
+            print(f"Overwriting existing file: {filepath}")
         
         # Download the file
         try:
@@ -136,6 +173,12 @@ class PodcastDownloader:
                         f.write(chunk)
             
             print(f"Downloaded: {filepath}")
+            
+            # Save URL to tracking file
+            self.save_downloaded_url(episode['enclosure_url'])
+            
+            # Set metadata tags
+            self._set_metadata_tags(filepath, episode, channel_name, channel_config)
             
             # Update playlist if specified
             if 'playlist' in channel_config:
@@ -170,6 +213,79 @@ class PodcastDownloader:
         
         return f"{channel_name}_{title}{ext}"
     
+    def _set_metadata_tags(self, filepath, episode, channel_name, channel_config):
+        """Set metadata tags on the downloaded file."""
+        try:
+            audio_file = MutagenFile(filepath)
+            if audio_file is None:
+                print(f"Warning: Could not read metadata for {filepath}")
+                return
+            
+            # Handle ID3 tags for MP3 files
+            if filepath.suffix.lower() == '.mp3':
+                if not hasattr(audio_file, 'tags') or audio_file.tags is None:
+                    audio_file.add_tags()
+                
+                tags = audio_file.tags
+                
+                # Set title if not present
+                if 'TIT2' not in tags:
+                    tags['TIT2'] = TIT2(encoding=3, text=episode['title'])
+                
+                # Set artist if not present - use channel name as reasonable default
+                if 'TPE1' not in tags:
+                    default_artist = channel_config.get('artist_tag', channel_name.title())
+                    tags['TPE1'] = TPE1(encoding=3, text=default_artist)
+                
+                # Set album if specified in config
+                if 'album_tag' in channel_config:
+                    tags['TALB'] = TALB(encoding=3, text=channel_config['album_tag'])
+                
+                # Set genre if specified in config
+                if 'genre_tag' in channel_config:
+                    tags['TCON'] = TCON(encoding=3, text=channel_config['genre_tag'])
+                elif 'genre' in channel_config:
+                    tags['TCON'] = TCON(encoding=3, text=channel_config['genre'])
+                
+                # Set comment if specified in config
+                if 'comment_tag' in channel_config:
+                    tags['COMM'] = COMM(encoding=3, lang='eng', desc='', text=channel_config['comment_tag'])
+                
+                audio_file.save()
+                print(f"Updated metadata for: {filepath}")
+            
+            else:
+                # Handle other audio formats (MP4, OGG, etc.)
+                if audio_file.tags is None:
+                    audio_file.add_tags()
+                
+                tags = audio_file.tags
+                
+                # Set title if not present
+                if 'TITLE' not in tags:
+                    tags['TITLE'] = episode['title']
+                
+                # Set artist if not present
+                if 'ARTIST' not in tags:
+                    default_artist = channel_config.get('artist_tag', channel_name.title())
+                    tags['ARTIST'] = default_artist
+                
+                # Set album if specified in config
+                if 'album_tag' in channel_config:
+                    tags['ALBUM'] = channel_config['album_tag']
+                
+                # Set genre if specified in config
+                if 'genre_tag' in channel_config:
+                    tags['GENRE'] = channel_config['genre_tag']
+                elif 'genre' in channel_config:
+                    tags['GENRE'] = channel_config['genre']
+                
+                audio_file.save()
+                print(f"Updated metadata for: {filepath}")
+                
+        except Exception as e:
+            print(f"Error setting metadata for {filepath}: {e}")
+    
     def _update_playlist(self, filepath, playlist_path):
         """Update M3U playlist file."""
         try:
@@ -181,6 +297,7 @@ class PodcastDownloader:
     def download_all_latest(self):
         """Download the latest episode for all configured channels."""
         self.load_config()
+        self.load_downloaded_urls()
         channels = self.get_channels()
         
         if not channels:
@@ -203,13 +320,15 @@ class PodcastDownloader:
 
 def main():
     """Main function."""
-    config_file = None
+    parser = argparse.ArgumentParser(description='Download podcasts using castget configuration')
+    parser.add_argument('config_file', nargs='?', default=None,
+                        help='Path to castget configuration file (default: ~/.castgetrc)')
+    parser.add_argument('--force', action='store_true',
+                        help='Force overwrite existing downloaded files')
     
-    # Check for command line argument
-    if len(sys.argv) > 1:
-        config_file = sys.argv[1]
+    args = parser.parse_args()
     
-    downloader = PodcastDownloader(config_file)
+    downloader = PodcastDownloader(args.config_file, args.force)
     downloader.download_all_latest()
 
 
