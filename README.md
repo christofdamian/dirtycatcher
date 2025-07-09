@@ -1,6 +1,6 @@
 # Dirtycatcher
 
-A podcast downloader that uses dirtyget configuration format. Downloads the newest episodes for each podcast configured in your dirtyget configuration file.
+A podcast downloader that uses dirtycatcher configuration format. Downloads the newest episodes for each podcast configured in your dirtycatcher configuration file.
 
 ## Installation
 
@@ -22,25 +22,19 @@ pip install dirtycatcher
 
 ### Command Line
 
-After installation, you can use either command:
+After installation, you can use the command:
 
 ```bash
 dirtycatcher [config_file] [--force]
 ```
 
-or
-
-```bash
-dirtyget [config_file] [--force]
-```
-
 **Arguments:**
-- `config_file`: Path to dirtyget configuration file (optional, defaults to `~/.dirtygetrc`)
+- `config_file`: Path to dirtycatcher configuration file (optional, defaults to `~/.dirtycatcherrc`)
 - `--force`: Force overwrite existing downloaded files
 
 ### Configuration File Format
 
-The configuration file uses the dirtyget format. Here's an example:
+The configuration file uses the dirtycatcher format. Here's an example:
 
 ```ini
 # Global settings
@@ -71,8 +65,6 @@ max_episodes=2
 - `artist_tag`: Artist tag for metadata (defaults to channel name)
 - `comment_tag`: Comment tag for metadata
 - `max_episodes`: Number of episodes to download (default: 1)
-- `playlist`: Path to M3U playlist file to update
-- `filespec`: Custom filename specification (advanced)
 
 ### Python API
 
@@ -80,7 +72,7 @@ max_episodes=2
 from dirtycatcher import PodcastDownloader
 
 # Initialize downloader
-downloader = PodcastDownloader(config_file='~/.dirtygetrc', force_overwrite=False)
+downloader = PodcastDownloader(config_file='~/.dirtycatcherrc', force_overwrite=False)
 
 # Download all configured podcasts
 downloader.download_all_latest()
@@ -93,7 +85,6 @@ downloader.download_all_latest()
 - Sets metadata tags (title, artist, album, genre, comments)
 - Supports custom download directories per channel
 - Global and per-channel configuration options
-- M3U playlist generation
 - Force overwrite option
 
 ## Dependencies

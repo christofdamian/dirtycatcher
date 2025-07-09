@@ -178,9 +178,6 @@ class PodcastDownloader:
             # Set metadata tags
             self._set_metadata_tags(filepath, episode, channel_name, channel_config)
             
-            # Update playlist if specified
-            if 'playlist' in channel_config:
-                self._update_playlist(filepath, channel_config['playlist'])
             
             return True
             
@@ -193,12 +190,6 @@ class PodcastDownloader:
     
     def _generate_filename(self, episode, channel_name, channel_config):
         """Generate filename for downloaded episode."""
-        # Check if custom filespec is provided
-        if 'filespec' in channel_config:
-            # This is a simplified implementation
-            # In a full implementation, you'd handle %(date), %(title) etc.
-            return channel_config['filespec']
-        
         # Default filename generation
         title = episode['title']
         # Clean title for filename
@@ -284,13 +275,6 @@ class PodcastDownloader:
         except Exception as e:
             print(f"Error setting metadata for {filepath}: {e}")
     
-    def _update_playlist(self, filepath, playlist_path):
-        """Update M3U playlist file."""
-        try:
-            with open(playlist_path, 'a') as f:
-                f.write(f"{filepath}\n")
-        except IOError as e:
-            print(f"Error updating playlist: {e}")
     
     def download_all_latest(self):
         """Download episodes for all configured channels."""
