@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dirtycatcher"
-version = "0.1.0"
-description = "Podcast downloader that uses dirtyget configuration format"
+version = "0.2.0"
+description = "Podcast downloader that uses dirtycatcher configuration format"
 authors = [
-    {name = "Your Name", email = "your.email@example.com"},
+    {name = "Christof Damian", email = "christof@damian.net"},
 ]
 readme = "README.md"
 requires-python = ">=3.7"
@@ -36,7 +36,6 @@ Homepage = "https://github.com/yourusername/dirtycatcher"
 
 [project.scripts]
 dirtycatcher = "dirtycatcher.cli:main"
-dirtyget = "dirtycatcher.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

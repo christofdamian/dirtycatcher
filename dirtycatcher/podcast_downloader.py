@@ -1,35 +1,29 @@
-#!/usr/bin/env python3
 """
-Podcast downloader that uses dirtyget configuration format.
-Downloads the newest episodes for each podcast.
+Core podcast downloader functionality.
 """
 
 import os
-import sys
 import re
 import configparser
 import requests
 import xml.etree.ElementTree as ET
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urlparse
 from pathlib import Path
-import time
-from datetime import datetime
-import argparse
 from mutagen import File as MutagenFile
 from mutagen.id3 import ID3, TPE1, TALB, TCON, TIT2, COMM
 
 
 class PodcastDownloader:
     def __init__(self, config_file=None, force_overwrite=False):
-        self.config_file = config_file or os.path.expanduser("~/.dirtygetrc")
+        self.config_file = config_file or os.path.expanduser("~/.dirtycatcherrc")
         self.config = configparser.ConfigParser(interpolation=None)  # Disable interpolation
         self.config.optionxform = str  # Preserve case sensitivity
         self.force_overwrite = force_overwrite
-        self.downloaded_urls_file = os.path.expanduser("~/.dirtyget_downloaded_urls")
+        self.downloaded_urls_file = os.path.expanduser("~/.dirtycatcher_downloaded_urls")
         self.downloaded_urls = set()
         
     def load_config(self):
-        """Load dirtyget configuration file."""
+        """Load dirtycatcher configuration file."""
         if not os.path.exists(self.config_file):
             raise FileNotFoundError(f"Configuration file not found: {self.config_file}")
         
@@ -327,21 +321,3 @@ class PodcastDownloader:
             for i, episode in enumerate(episodes, 1):
                 print(f"  Episode {i}/{len(episodes)}: {episode['title']}")
                 self.download_episode(episode, channel_name, channel_config)
-
-
-def main():
-    """Main function."""
-    parser = argparse.ArgumentParser(description='Download podcasts using dirtyget configuration')
-    parser.add_argument('config_file', nargs='?', default=None,
-                        help='Path to dirtyget configuration file (default: ~/.dirtygetrc)')
-    parser.add_argument('--force', action='store_true',
-                        help='Force overwrite existing downloaded files')
-    
-    args = parser.parse_args()
-    
-    downloader = PodcastDownloader(args.config_file, args.force)
-    downloader.download_all_latest()
-
-
-if __name__ == "__main__":
-    main()
